@@ -10,7 +10,7 @@ export default async function MesaControlR10Page() {
     if (!session) redirect('/login');
 
     const user = session.user as any;
-    if (!canManageMesaControl(user.role, user.campania, 'R10')) {
+    if (!canManageMesaControl(user.role, user.campana, 'R10')) {
         redirect('/');
     }
 

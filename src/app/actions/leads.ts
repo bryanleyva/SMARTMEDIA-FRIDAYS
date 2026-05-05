@@ -1333,6 +1333,54 @@ export async function updateVentaFull(id: string, data: any) {
     }
 }
 
+export async function getVentasConSolicitudPendiente(): Promise<string[]> {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['CHATS_VENTAS'];
+        if (!sheet) return [];
+
+        const rows = await sheet.getRows();
+        const lastTipo: Record<string, string> = {};
+
+        for (const r of rows) {
+            const tipo = r.get('TIPO');
+            if (tipo !== 'SOLICITUD_ARCHIVOS' && tipo !== 'ARCHIVOS_SUBIDOS') continue;
+            lastTipo[r.get('ID_VENTA')] = tipo;
+        }
+
+        return Object.entries(lastTipo)
+            .filter(([, tipo]) => tipo === 'SOLICITUD_ARCHIVOS')
+            .map(([id]) => id);
+    } catch (error) {
+        console.error('Error in getVentasConSolicitudPendiente:', error);
+        return [];
+    }
+}
+
+export async function appendSustentos(ventaId: string, newFileIds: string[]) {
+    try {
+        await loadDoc();
+        const sheet = doc.sheetsByTitle['VENTAS'];
+        if (!sheet) return { success: false, error: 'Hoja VENTAS no encontrada' };
+
+        const rows = await sheet.getRows();
+        const row = rows.find(r => r.get('ID') == ventaId);
+        if (!row) return { success: false, error: 'Registro no encontrado' };
+
+        const existing = (row.get('ID SUSTENTOS') || '').trim();
+        const merged = existing
+            ? existing.split(' - ').concat(newFileIds).join(' - ')
+            : newFileIds.join(' - ');
+
+        row.set('ID SUSTENTOS', merged);
+        await row.save();
+        return { success: true };
+    } catch (error) {
+        console.error('Error in appendSustentos:', error);
+        return { success: false, error: 'Error al guardar archivos' };
+    }
+}
+
 export async function getDroppedProspects(userName: string, options: { role: string }) {
     try {
         await loadDoc();

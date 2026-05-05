@@ -17,15 +17,17 @@ export default async function MainLayout({
         redirect('/login');
     }
 
+    const user = session.user as any;
+
     return (
         <div className="min-h-screen relative z-10 flex flex-col w-full bg-[#050505]">
             <SessionGuardian />
             <Navbar
-                userRole={(session.user as any).role}
+                userRole={user.role}
                 userName={session.user.name}
-                userCargo={(session.user as any).cargo}
+                userCargo={user.cargo}
                 userPhoto={session.user.image ?? undefined}
-                userCampania={(session.user as any).campania}
+                userCampana={user.campana ?? ''}
             />
             <main className="flex-1 w-full flex flex-col items-center" style={{ paddingTop: '94px' }}>
                 <div className="container-custom w-full py-8">

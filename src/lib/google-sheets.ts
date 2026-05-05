@@ -1,18 +1,18 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
-// Interfaces for our data
 export interface UserRow {
     DNI: string;
     'NOMBRES COMPLETOS': string;
     USER: string;
     CLAVE: string;
-    ROL: 'ADMIN' | 'SPECIAL' | 'STANDAR';
+    ROL: 'ADMIN' | 'SPECIAL' | 'STANDAR' | 'BACKOFFICE' | 'ANDREA';
     CARGO?: string;
     SUPERVISOR?: string;
     TELEFONO: string;
     SESSION_TOKEN?: string;
     FOTO?: string;
+    'CAMPAÑA'?: string;   // ← columna real del Sheets
 }
 
 export interface BaseRow {
@@ -97,6 +97,7 @@ export async function getUserByCredentials(username: string, password: string): 
         TELEFONO: userRow.get('TELEFONO'),
         SESSION_TOKEN: newToken,
         FOTO: userRow.get('FOTO'),
+        'CAMPAÑA': userRow.get('CAMPAÑA') || '',  // ← nombre exacto de la columna
     };
 }
 

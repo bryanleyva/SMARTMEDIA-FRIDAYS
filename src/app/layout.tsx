@@ -3,7 +3,7 @@ import "./globals.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: "LISHING",
+  title: "FRIDAY",
   description: "Plataforma de Gestión",
   icons: {
     icon: '/icono.png?v=4',

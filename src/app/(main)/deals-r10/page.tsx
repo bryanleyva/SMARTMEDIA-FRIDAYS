@@ -12,7 +12,7 @@ export default async function DealsR10Page() {
     const user = session.user as any;
 
     // Bloquear acceso si el usuario no tiene campaña R10
-    if (!hasCampaignAccess(user.campania, user.role, 'R10')) {
+    if (!hasCampaignAccess(user.campana, user.role, 'R10')) {
         redirect('/');
     }
 

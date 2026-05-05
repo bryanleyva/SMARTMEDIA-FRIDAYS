@@ -12,7 +12,7 @@ export default async function ReporteR10Page() {
     const user = session.user as any;
     const role = user.role;
 
-    if (!hasCampaignAccess(user.campania, role, 'R10')) {
+    if (!hasCampaignAccess(user.campana, role, 'R10')) {
         redirect('/');
     }
 

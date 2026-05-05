@@ -8,7 +8,7 @@ export default async function LinkerR10Page() {
     if (!session) redirect('/login');
 
     const userRole = (session.user as any).role;
-    const userCampania = (session.user as any).campania;
+    const userCampania = (session.user as any).campana;
 
     if (!hasCampaignAccess(userCampania, userRole, 'R10')) {
         redirect('/');

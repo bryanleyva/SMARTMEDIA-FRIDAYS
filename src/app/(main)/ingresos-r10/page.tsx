@@ -10,7 +10,7 @@ export default async function IngresosR10Page() {
     if (!session) redirect('/login');
 
     const user = session.user as any;
-    if (!hasCampaignAccess(user.campania, user.role, 'R10')) {
+    if (!hasCampaignAccess(user.campana, user.role, 'R10')) {
         redirect('/');
     }
 

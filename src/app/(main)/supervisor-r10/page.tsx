@@ -16,7 +16,7 @@ export default async function SupervisorR10Page() {
     if (role !== 'SPECIAL' && role !== 'ADMIN') {
         redirect('/');
     }
-    if (!hasCampaignAccess(user.campania, role, 'R10')) {
+    if (!hasCampaignAccess(user.campana, role, 'R10')) {
         redirect('/');
     }
 

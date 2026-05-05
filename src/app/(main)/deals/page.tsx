@@ -13,7 +13,7 @@ export default async function ProspectosPage() {
 
     const userName = session.user.name || session.user.email || '';
     const userRole = (session.user as any).role || 'STANDARD';
-    const userCampania = (session.user as any).campania;
+    const userCampania = (session.user as any).campana;
 
     // Bloquear acceso si no tiene campaña R20
     if (!hasCampaignAccess(userCampania, userRole, 'R20')) {

@@ -107,7 +107,7 @@ export default function InicioPage() {
                             ¡Hola, {(userData?.name.split(' ')[0] || 'Bienvenido')}!
                         </h2>
                         <p style={{ color: '#9ca3af', fontSize: '1.25rem', lineHeight: 1.7, fontWeight: 300 }}>
-                            Bienvenido a tu panel de control SMART MEDIA. Aquí puedes gestionar tus ventas,
+                            Bienvenido a tu panel de control MK. Aquí puedes gestionar tus ventas,
                             revisar leads y monitorear tu desempeño en tiempo real. Selecciona una opción del menú para continuar.
                         </p>
                     </div>

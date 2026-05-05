@@ -10,7 +10,7 @@ interface NavbarProps {
     userName?: string | null;
     userCargo?: string;
     userPhoto?: string;
-    userCampania?: string;
+    userCampana?: string;   // ← viene de la columna CAMPAÑA del Sheets
 }
 
 interface NavItem {
@@ -21,30 +21,30 @@ interface NavItem {
 }
 
 /**
- * Parsea la columna CAMPANIA del usuario.
+ * Parsea la columna CAMPAÑA del usuario.
  * Acepta: "R20", "R10", "R20,R10", "R20 R10", etc.
- * Si el valor está vacío o no existe, se asume R20 por defecto
- * para no romper a usuarios ya existentes que no tienen campania asignada.
+ * Si está vacía → ADMIN ve todo, el resto asume R20 por defecto.
  */
-function parseCampaigns(campania?: string, role?: string): string[] {
-    if (!campania || campania.trim() === '') {
-        // ADMIN y roles especiales sin campania asignada ven todo
+function parseCampaigns(campana?: string, role?: string): string[] {
+    if (!campana || campana.trim() === '') {
         if (role === 'ADMIN') return ['R20', 'R10'];
-        // El resto sin campania: asumir R20 por defecto
-        return ['R20'];
+        return ['R20']; // default para ejecutivos sin campaña asignada
     }
-    return campania
+    const parsed = campana
         .toUpperCase()
         .split(/[\s,;|]+/)
         .map(s => s.trim())
         .filter(s => s === 'R20' || s === 'R10');
+
+    // Si no se pudo parsear nada válido → asumir R20
+    return parsed.length > 0 ? parsed : ['R20'];
 }
 
-export default function Navbar({ userRole, userName, userCargo, userPhoto, userCampania }: NavbarProps) {
+export default function Navbar({ userRole, userName, userCargo, userPhoto, userCampana }: NavbarProps) {
     const pathname = usePathname();
 
     const isHR = userCargo?.trim().toUpperCase() === 'RECURSOS HUMANOS';
-    const campaigns = parseCampaigns(userCampania, userRole);
+    const campaigns = parseCampaigns(userCampana, userRole);
     const hasR20 = campaigns.includes('R20');
     const hasR10 = campaigns.includes('R10');
 

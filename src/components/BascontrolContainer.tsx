@@ -234,7 +234,7 @@ export default function BascontrolContainer({ userEmail, userName, userRole, use
                                         color: 'white',
                                         marginBottom: '1rem',
                                         letterSpacing: '-0.02em'
-                                    }}>BASE RYDERS</h4>
+                                    }}>BASE</h4>
                                     <p style={{ color: '#a1a1aa', fontSize: '1rem', lineHeight: '1.6', maxWidth: '80%' }}>
                                         Acceso completo a la base de datos principal para gestión de leads activos.
                                     </p>
