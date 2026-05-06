@@ -24,6 +24,8 @@ export function hasCampaignAccess(
 ): boolean {
     if (userRole === 'ADMIN') return true;
     const campaigns = parseCampaigns(userCampaigns);
+    // Sin campaña asignada → asumir R20 por defecto (mismo criterio que el Navbar)
+    if (campaigns.length === 0) return target === 'R20';
     return campaigns.includes(target);
 }
 
