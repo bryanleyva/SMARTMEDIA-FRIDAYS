@@ -212,6 +212,7 @@ export default function SubirVentaModal({ isOpen, onClose, leadData, ejecutivo, 
         const emptyFields = Object.entries(formData)
             .filter(([key, value]) => {
                 if (key === 'idSustentos') return false;
+                if (key === 'cargoPlan') return false; // campo auxiliar, no requerido
                 if (typeof value === 'string') return value.trim() === '';
                 return !value;
             })
