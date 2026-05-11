@@ -21,6 +21,7 @@ export default function AdminAssignmentPanel() {
     const [showModal, setShowModal] = useState(false);
     const [selectedSup, setSelectedSup] = useState<SupervisorStat | null>(null);
     const [quantity, setQuantity] = useState(100);
+    const [qtyInput, setQtyInput] = useState('100');
     const [rangeId, setRangeId] = useState('1-4');
     const [assigning, setAssigning] = useState(false);
 
@@ -40,6 +41,7 @@ export default function AdminAssignmentPanel() {
     const openModal = (sup: SupervisorStat) => {
         setSelectedSup(sup);
         setQuantity(100);
+        setQtyInput('100');
         setRangeId('1-4');
         setShowModal(true);
     };
@@ -49,10 +51,21 @@ export default function AdminAssignmentPanel() {
     const adjustQuantity = (delta: number) => {
         setQuantity(prev => {
             const next = prev + delta;
-            if (next < 100) return 100;
-            if (next > rangeStock) return Math.max(100, Math.floor(rangeStock / 100) * 100);
-            return next;
+            const clamped = Math.min(Math.max(next, 1), rangeStock);
+            setQtyInput(String(clamped));
+            return clamped;
         });
+    };
+
+    const handleQtyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setQtyInput(e.target.value);
+    };
+
+    const handleQtyBlur = () => {
+        const val = parseInt(qtyInput) || 1;
+        const clamped = Math.min(Math.max(val, 1), rangeStock || 1);
+        setQuantity(clamped);
+        setQtyInput(String(clamped));
     };
 
     const handleAssign = async () => {
@@ -204,7 +217,7 @@ export default function AdminAssignmentPanel() {
                                     ].map((r) => (
                                         <button
                                             key={r.id}
-                                            onClick={() => { setRangeId(r.id); setQuantity(100); }}
+                                            onClick={() => { setRangeId(r.id); setQuantity(100); setQtyInput('100'); }}
                                             className={`apRangeCard ${rangeId === r.id ? 'apRangeActive' : ''}`}
                                         >
                                             <span className="apRangeTag">Rango</span>
@@ -220,18 +233,28 @@ export default function AdminAssignmentPanel() {
                                 <label className="apFieldLabel">Cantidad a Asignar (múltiplos de 100)</label>
                                 <div className="apQtyControl">
                                     <button onClick={() => adjustQuantity(-100)} className="apQtyBtn" disabled={quantity <= 100}>−100</button>
-                                    <div className="apQtyDisplay">{quantity}</div>
+                                    <input
+                                        type="number"
+                                        value={qtyInput}
+                                        min={1}
+                                        onChange={handleQtyChange}
+                                        onBlur={handleQtyBlur}
+                                        className="apQtyDisplay"
+                                    />
                                     <button onClick={() => adjustQuantity(100)} className="apQtyBtn" disabled={quantity + 100 > rangeStock}>+100</button>
                                 </div>
-                                {rangeStock < 100 && (
-                                    <p className="apQtyWarning">Stock insuficiente en este rango ({rangeStock} disponibles).</p>
+                                {quantity > rangeStock && rangeStock > 0 && (
+                                    <p className="apQtyWarning">Solo hay {rangeStock} disponibles en este rango.</p>
+                                )}
+                                {rangeStock === 0 && (
+                                    <p className="apQtyWarning">Sin stock en este rango.</p>
                                 )}
                             </div>
                         </div>
 
                         <button
                             onClick={handleAssign}
-                            disabled={assigning || rangeStock < 100}
+                            disabled={assigning || rangeStock === 0 || quantity > rangeStock}
                             className="apExecuteBtn"
                         >
                             {assigning ? 'PROCESANDO...' : `ASIGNAR ${quantity} LEADS`}
@@ -386,14 +409,15 @@ export default function AdminAssignmentPanel() {
                     display: flex; align-items: center; justify-content: center;
                     padding: 1.5rem; background: rgba(0,0,0,0.7);
                     backdrop-filter: blur(12px); animation: modalIn 0.4s ease-out;
+                    overflow-y: auto; align-content: flex-start;
                 }
                 @keyframes modalIn { from{opacity:0} to{opacity:1} }
 
                 .apModal {
                     position: relative; background: #0c0c0e;
                     border: 1px solid rgba(255,255,255,0.1);
-                    width: 100%; max-width: 440px; border-radius: 2.5rem;
-                    padding: 2.5rem; overflow: hidden;
+                    width: 100%; max-width: 480px; border-radius: 2.5rem;
+                    padding: 2rem; overflow-y: auto; max-height: 92vh;
                     box-shadow: 0 0 100px rgba(99,102,241,0.15);
                     animation: panelIn 0.5s cubic-bezier(0.19,1,0.22,1);
                 }
@@ -456,20 +480,29 @@ export default function AdminAssignmentPanel() {
                 .apRangeStock { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #6366f1; margin-top: 0.1rem; }
                 .apRangeCard.apRangeActive .apRangeStock { color: rgba(255,255,255,0.7); }
 
-                .apQtyControl { display: flex; align-items: center; gap: 0.75rem; }
+                .apQtyControl { display: flex; align-items: center; gap: 0.5rem; }
                 .apQtyBtn {
-                    padding: 0.75rem 1.25rem; background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem;
-                    color: white; font-size: 0.85rem; font-weight: 800; cursor: pointer;
-                    transition: 0.2s; white-space: nowrap;
+                    flex-shrink: 0;
+                    padding: 0.7rem 1rem; background: rgba(255,255,255,0.05);
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 0.875rem;
+                    color: white; font-size: 0.8rem; font-weight: 800; cursor: pointer;
+                    transition: 0.2s; white-space: nowrap; min-width: 64px;
                 }
                 .apQtyBtn:hover:not(:disabled) { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.3); }
                 .apQtyBtn:disabled { opacity: 0.3; cursor: not-allowed; }
                 .apQtyDisplay {
-                    flex: 1; text-align: center; font-size: 2rem; font-weight: 950;
+                    flex: 1; min-width: 0; text-align: center; font-size: 1.75rem; font-weight: 950;
                     color: white; background: rgba(24,24,27,0.5);
-                    border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; padding: 0.75rem;
+                    border: 1px solid rgba(255,255,255,0.1); border-radius: 1rem; padding: 0.65rem 0.5rem;
+                    outline: none; font-family: 'Outfit', sans-serif; width: 100%;
                 }
+                .apQtyDisplay:focus {
+                    border-color: rgba(99,102,241,0.5);
+                    box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+                }
+                .apQtyDisplay::-webkit-outer-spin-button,
+                .apQtyDisplay::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+                .apQtyDisplay[type=number] { -moz-appearance: textfield; }
                 .apQtyWarning { font-size: 0.75rem; color: #f59e0b; font-weight: 700; margin: 0; }
 
                 .apExecuteBtn {
