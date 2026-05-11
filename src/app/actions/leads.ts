@@ -1744,8 +1744,8 @@ export async function getSupervisorAssignmentStats() {
 
 export async function assignLeadsToSupervisor(supervisorName: string, quantity: number, rangeId?: string) {
     try {
-        if (quantity <= 0 || quantity % 100 !== 0) {
-            return { success: false, count: 0, error: 'La cantidad debe ser múltiplo de 100' };
+        if (quantity <= 0) {
+            return { success: false, count: 0, error: 'La cantidad debe ser mayor a 0' };
         }
         const cache = LeadCache.getInstance();
         await cache.ensureInitialized();
