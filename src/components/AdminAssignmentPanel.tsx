@@ -9,6 +9,7 @@ interface SupervisorStat {
     user: string;
     poolTotal: number;
     poolAvailable: number;
+    poolByRange: Record<string, number>;
 }
 
 export default function AdminAssignmentPanel() {
@@ -20,6 +21,7 @@ export default function AdminAssignmentPanel() {
     const [showModal, setShowModal] = useState(false);
     const [selectedSup, setSelectedSup] = useState<SupervisorStat | null>(null);
     const [quantity, setQuantity] = useState(100);
+    const [rangeId, setRangeId] = useState('1-4');
     const [assigning, setAssigning] = useState(false);
 
     useEffect(() => { loadData(); }, []);
@@ -38,14 +40,17 @@ export default function AdminAssignmentPanel() {
     const openModal = (sup: SupervisorStat) => {
         setSelectedSup(sup);
         setQuantity(100);
+        setRangeId('1-4');
         setShowModal(true);
     };
+
+    const rangeStock = globalStock[rangeId] || 0;
 
     const adjustQuantity = (delta: number) => {
         setQuantity(prev => {
             const next = prev + delta;
             if (next < 100) return 100;
-            if (next > totalGlobalStock) return Math.floor(totalGlobalStock / 100) * 100 || 100;
+            if (next > rangeStock) return Math.max(100, Math.floor(rangeStock / 100) * 100);
             return next;
         });
     };
@@ -53,14 +58,14 @@ export default function AdminAssignmentPanel() {
     const handleAssign = async () => {
         if (!selectedSup) return;
 
-        if (quantity > totalGlobalStock) {
-            AppSwal.fire({ title: 'Stock insuficiente', text: `Solo hay ${totalGlobalStock} leads disponibles en el stock global.`, icon: 'warning' });
+        if (quantity > rangeStock) {
+            AppSwal.fire({ title: 'Stock insuficiente', text: `Solo hay ${rangeStock} leads disponibles en el rango ${rangeId} líneas.`, icon: 'warning' });
             return;
         }
 
         const confirm = await AppSwal.fire({
             title: '¿Confirmar asignación?',
-            text: `Asignar ${quantity} leads a ${selectedSup.name}`,
+            text: `Asignar ${quantity} leads (${rangeId} lins) a ${selectedSup.name}`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'SÍ, ASIGNAR',
@@ -70,7 +75,7 @@ export default function AdminAssignmentPanel() {
         if (!confirm.isConfirmed) return;
 
         setAssigning(true);
-        const res = await assignLeadsToSupervisor(selectedSup.name, quantity);
+        const res = await assignLeadsToSupervisor(selectedSup.name, quantity, rangeId);
         setAssigning(false);
 
         if (res.success) {
@@ -88,8 +93,6 @@ export default function AdminAssignmentPanel() {
             <style jsx>{`.font-outfit{font-family:'Outfit',sans-serif}.loadingContainer{padding:5rem;text-align:center;color:#10b981;font-weight:900;letter-spacing:.3em}.loadingText{animation:pulse 2s infinite}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}`}</style>
         </div>
     );
-
-    const maxQuantity = Math.floor(totalGlobalStock / 100) * 100;
 
     return (
         <div className="apContainer font-outfit">
@@ -143,6 +146,20 @@ export default function AdminAssignmentPanel() {
                                     </div>
                                 </div>
 
+                                {sup.poolTotal > 0 && (
+                                    <div className="apRangeBreakdown">
+                                        {Object.entries(sup.poolByRange)
+                                            .filter(([, count]) => count > 0)
+                                            .map(([range, count]) => (
+                                                <div key={range} className="apRangePill">
+                                                    <span className="apRangePillCount">{count}</span>
+                                                    <span className="apRangePillLabel">{range} lins</span>
+                                                </div>
+                                            ))
+                                        }
+                                    </div>
+                                )}
+
                                 <button
                                     onClick={() => openModal(sup)}
                                     disabled={totalGlobalStock === 0}
@@ -167,30 +184,54 @@ export default function AdminAssignmentPanel() {
 
                         <div className="apModalInfo">
                             <div className="apModalInfoRow">
-                                <span>Stock global disponible</span>
-                                <strong>{totalGlobalStock.toLocaleString()}</strong>
-                            </div>
-                            <div className="apModalInfoRow">
                                 <span>Pool actual del supervisor</span>
                                 <strong>{selectedSup.poolTotal}</strong>
                             </div>
                         </div>
 
                         <div className="apFormGroup">
-                            <label className="apFieldLabel">Cantidad a Asignar (múltiplos de 100)</label>
-                            <div className="apQtyControl">
-                                <button onClick={() => adjustQuantity(-100)} className="apQtyBtn" disabled={quantity <= 100}>−100</button>
-                                <div className="apQtyDisplay">{quantity}</div>
-                                <button onClick={() => adjustQuantity(100)} className="apQtyBtn" disabled={quantity >= maxQuantity}>+100</button>
+                            {/* Range selector */}
+                            <div className="apInputField">
+                                <label className="apFieldLabel">Rango de Líneas</label>
+                                <div className="apRangeGrid">
+                                    {[
+                                        { id: '1-4',   label: '1 a 4 Lins' },
+                                        { id: '5-10',  label: '5 a 10 Lins' },
+                                        { id: '11-15', label: '11 a 15 Lins' },
+                                        { id: '16-21', label: '16 a 21 Lins' },
+                                        { id: '22-30', label: '22 a 30 Lins' },
+                                        { id: '30+',   label: '30+ Lins' },
+                                    ].map((r) => (
+                                        <button
+                                            key={r.id}
+                                            onClick={() => { setRangeId(r.id); setQuantity(100); }}
+                                            className={`apRangeCard ${rangeId === r.id ? 'apRangeActive' : ''}`}
+                                        >
+                                            <span className="apRangeTag">Rango</span>
+                                            <span className="apRangeLabel">{r.label}</span>
+                                            <span className="apRangeStock">Stock: {globalStock[r.id] || 0}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            {maxQuantity < 100 && (
-                                <p className="apQtyWarning">Stock insuficiente para asignar 100 leads.</p>
-                            )}
+
+                            {/* Quantity selector */}
+                            <div className="apInputField">
+                                <label className="apFieldLabel">Cantidad a Asignar (múltiplos de 100)</label>
+                                <div className="apQtyControl">
+                                    <button onClick={() => adjustQuantity(-100)} className="apQtyBtn" disabled={quantity <= 100}>−100</button>
+                                    <div className="apQtyDisplay">{quantity}</div>
+                                    <button onClick={() => adjustQuantity(100)} className="apQtyBtn" disabled={quantity + 100 > rangeStock}>+100</button>
+                                </div>
+                                {rangeStock < 100 && (
+                                    <p className="apQtyWarning">Stock insuficiente en este rango ({rangeStock} disponibles).</p>
+                                )}
+                            </div>
                         </div>
 
                         <button
                             onClick={handleAssign}
-                            disabled={assigning || maxQuantity < 100}
+                            disabled={assigning || rangeStock < 100}
                             className="apExecuteBtn"
                         >
                             {assigning ? 'PROCESANDO...' : `ASIGNAR ${quantity} LEADS`}
@@ -315,6 +356,17 @@ export default function AdminAssignmentPanel() {
                 .apStatAvail { color: #6366f1; }
                 .apStatDivider { height: 1px; background: rgba(255,255,255,0.05); }
 
+                .apRangeBreakdown {
+                    display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem;
+                }
+                .apRangePill {
+                    display: flex; align-items: center; gap: 0.3rem;
+                    background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.18);
+                    border-radius: 0.6rem; padding: 0.25rem 0.6rem;
+                }
+                .apRangePillCount { font-size: 0.78rem; font-weight: 900; color: #818cf8; }
+                .apRangePillLabel { font-size: 9px; font-weight: 700; color: #52525b; text-transform: uppercase; }
+
                 .apAssignBtn {
                     width: 100%; padding: 0.85rem; border-radius: 1.25rem;
                     background: white; border: none; color: black;
@@ -380,11 +432,29 @@ export default function AdminAssignmentPanel() {
                 }
                 .apModalInfoRow strong { color: white; font-weight: 900; }
 
-                .apFormGroup { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+                .apFormGroup { display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 2rem; }
+                .apInputField { display: flex; flex-direction: column; gap: 0.75rem; }
                 .apFieldLabel {
                     font-size: 9px; font-weight: 900; color: #52525b;
                     text-transform: uppercase; letter-spacing: 0.2em;
                 }
+
+                .apRangeGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+                .apRangeCard {
+                    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 1rem; padding: 0.75rem;
+                    display: flex; flex-direction: column; gap: 0.2rem;
+                    text-align: left; cursor: pointer; transition: 0.3s;
+                }
+                .apRangeCard.apRangeActive {
+                    background: #6366f1; border-color: #6366f1;
+                    box-shadow: 0 8px 20px rgba(99,102,241,0.25);
+                }
+                .apRangeTag { font-size: 8px; font-weight: 900; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+                .apRangeCard.apRangeActive .apRangeTag { color: rgba(255,255,255,0.6); }
+                .apRangeLabel { font-size: 0.8rem; font-weight: 800; color: white; }
+                .apRangeStock { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #6366f1; margin-top: 0.1rem; }
+                .apRangeCard.apRangeActive .apRangeStock { color: rgba(255,255,255,0.7); }
 
                 .apQtyControl { display: flex; align-items: center; gap: 0.75rem; }
                 .apQtyBtn {

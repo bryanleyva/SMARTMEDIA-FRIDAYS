@@ -1714,6 +1714,9 @@ export async function getSupervisorAssignmentStats() {
             const normName = name.toUpperCase();
             let poolTotal = 0;
             let poolAvailable = 0;
+            const poolByRange: Record<string, number> = {
+                '1-4': 0, '5-10': 0, '11-15': 0, '16-21': 0, '22-30': 0, '30+': 0
+            };
             allLeads.forEach(row => {
                 const sup = (row.get('SUPERVISOR') || '').trim().toUpperCase();
                 const exec = (row.get('EJECUTIVO') || '').trim();
@@ -1721,8 +1724,15 @@ export async function getSupervisorAssignmentStats() {
                 if (!ruc || sup !== normName) return;
                 poolTotal++;
                 if (exec === '') poolAvailable++;
+                const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
+                if (lineas >= 1 && lineas <= 4) poolByRange['1-4']++;
+                else if (lineas >= 5 && lineas <= 10) poolByRange['5-10']++;
+                else if (lineas >= 11 && lineas <= 15) poolByRange['11-15']++;
+                else if (lineas >= 16 && lineas <= 21) poolByRange['16-21']++;
+                else if (lineas >= 22 && lineas <= 30) poolByRange['22-30']++;
+                else if (lineas > 30) poolByRange['30+']++;
             });
-            return { name, user: u.get('USER'), poolTotal, poolAvailable };
+            return { name, user: u.get('USER'), poolTotal, poolAvailable, poolByRange };
         });
 
         return { success: true, globalStock, totalGlobalStock, supervisors };
@@ -1732,14 +1742,31 @@ export async function getSupervisorAssignmentStats() {
     }
 }
 
-export async function assignLeadsToSupervisor(supervisorName: string, quantity: number) {
+export async function assignLeadsToSupervisor(supervisorName: string, quantity: number, rangeId?: string) {
     try {
         if (quantity <= 0 || quantity % 100 !== 0) {
             return { success: false, count: 0, error: 'La cantidad debe ser múltiplo de 100' };
         }
         const cache = LeadCache.getInstance();
         await cache.ensureInitialized();
-        return await cache.batchAssignToSupervisor(supervisorName, quantity);
+
+        let criteria: ((row: any) => boolean) | undefined;
+        if (rangeId) {
+            criteria = (row: any) => {
+                const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
+                switch (rangeId) {
+                    case '1-4':   return lineas >= 1  && lineas <= 4;
+                    case '5-10':  return lineas >= 5  && lineas <= 10;
+                    case '11-15': return lineas >= 11 && lineas <= 15;
+                    case '16-21': return lineas >= 16 && lineas <= 21;
+                    case '22-30': return lineas >= 22 && lineas <= 30;
+                    case '30+':   return lineas > 30;
+                    default:      return true;
+                }
+            };
+        }
+
+        return await cache.batchAssignToSupervisor(supervisorName, quantity, criteria);
     } catch (error) {
         console.error('Error in assignLeadsToSupervisor:', error);
         return { success: false, count: 0, error: 'Error al asignar base al supervisor' };

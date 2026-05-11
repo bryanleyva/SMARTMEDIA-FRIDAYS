@@ -192,7 +192,8 @@ export class LeadCache {
      */
     public async batchAssignToSupervisor(
         supervisorName: string,
-        quantity: number
+        quantity: number,
+        criteria?: (row: any) => boolean
     ): Promise<{ success: boolean; count: number; error?: string }> {
         return this.runLocked(async () => {
             try {
@@ -202,7 +203,8 @@ export class LeadCache {
                     const exec = (row.get('EJECUTIVO') || '').trim();
                     const sup = (row.get('SUPERVISOR') || '').trim();
                     const ruc = row.get('RUC');
-                    return ruc && exec === '' && sup === '';
+                    if (!ruc || exec !== '' || sup !== '') return false;
+                    return criteria ? criteria(row) : true;
                 }).slice(0, quantity);
 
                 if (candidates.length === 0) {
