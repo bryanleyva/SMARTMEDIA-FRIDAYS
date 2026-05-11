@@ -1587,15 +1587,19 @@ export async function getExecutiveAssignmentStats(userRole?: string, userName?: 
 
         allLeads.forEach(row => {
             const exec = (row.get('EJECUTIVO') || '').trim();
-            if (exec === '') {
-                const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
-                if (lineas >= 1 && lineas <= 4) stock['1-4']++;
-                else if (lineas >= 5 && lineas <= 10) stock['5-10']++;
-                else if (lineas >= 11 && lineas <= 15) stock['11-15']++;
-                else if (lineas >= 16 && lineas <= 21) stock['16-21']++;
-                else if (lineas >= 22 && lineas <= 30) stock['22-30']++;
-                else if (lineas > 30) stock['30+']++;
+            const sup = (row.get('SUPERVISOR') || '').trim();
+            if (exec !== '') return;
+            // Supervisors only see stock from their own assigned pool
+            if (userRole === 'SPECIAL' && userName) {
+                if (sup.toUpperCase() !== userName.trim().toUpperCase()) return;
             }
+            const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
+            if (lineas >= 1 && lineas <= 4) stock['1-4']++;
+            else if (lineas >= 5 && lineas <= 10) stock['5-10']++;
+            else if (lineas >= 11 && lineas <= 15) stock['11-15']++;
+            else if (lineas >= 16 && lineas <= 21) stock['16-21']++;
+            else if (lineas >= 22 && lineas <= 30) stock['22-30']++;
+            else if (lineas > 30) stock['30+']++;
         });
 
         return { success: true, stats, stock };
@@ -1644,6 +1648,11 @@ export async function assignLeadsByCriteria(
         const fechaInicio = `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
 
         const criteria = (row: any) => {
+            // Supervisors can only assign from their own pool
+            if (userRole === 'SPECIAL' && userName) {
+                const sup = (row.get('SUPERVISOR') || '').trim().toUpperCase();
+                if (sup !== userName.trim().toUpperCase()) return false;
+            }
             const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
             switch (rangeId) {
                 case '1-4': return lineas >= 1 && lineas <= 4;
@@ -1662,5 +1671,77 @@ export async function assignLeadsByCriteria(
     } catch (error) {
         console.error('Error in assignLeadsByCriteria:', error);
         return { success: false, count: 0, error: 'Error al asignar leads por criterio' };
+    }
+}
+
+export async function getSupervisorAssignmentStats() {
+    try {
+        const leadCache = LeadCache.getInstance();
+        await leadCache.ensureInitialized();
+        const userCache = UserCache.getInstance();
+        await userCache.ensureInitialized();
+
+        const allLeads = leadCache.getAll();
+
+        const supervisorUsers = userCache.getAll().filter((u: any) => {
+            const role = (u.get('ROL') || '').trim().toUpperCase();
+            return role === 'SPECIAL';
+        });
+
+        // Global stock: no SUPERVISOR assigned, no EJECUTIVO assigned
+        const globalStock: Record<string, number> = {
+            '1-4': 0, '5-10': 0, '11-15': 0, '16-21': 0, '22-30': 0, '30+': 0
+        };
+        let totalGlobalStock = 0;
+
+        allLeads.forEach(row => {
+            const exec = (row.get('EJECUTIVO') || '').trim();
+            const sup = (row.get('SUPERVISOR') || '').trim();
+            const ruc = row.get('RUC');
+            if (!ruc || exec !== '' || sup !== '') return;
+            totalGlobalStock++;
+            const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
+            if (lineas >= 1 && lineas <= 4) globalStock['1-4']++;
+            else if (lineas >= 5 && lineas <= 10) globalStock['5-10']++;
+            else if (lineas >= 11 && lineas <= 15) globalStock['11-15']++;
+            else if (lineas >= 16 && lineas <= 21) globalStock['16-21']++;
+            else if (lineas >= 22 && lineas <= 30) globalStock['22-30']++;
+            else if (lineas > 30) globalStock['30+']++;
+        });
+
+        const supervisors = supervisorUsers.map((u: any) => {
+            const name = (u.get('NOMBRES COMPLETOS') || '').trim();
+            const normName = name.toUpperCase();
+            let poolTotal = 0;
+            let poolAvailable = 0;
+            allLeads.forEach(row => {
+                const sup = (row.get('SUPERVISOR') || '').trim().toUpperCase();
+                const exec = (row.get('EJECUTIVO') || '').trim();
+                const ruc = row.get('RUC');
+                if (!ruc || sup !== normName) return;
+                poolTotal++;
+                if (exec === '') poolAvailable++;
+            });
+            return { name, user: u.get('USER'), poolTotal, poolAvailable };
+        });
+
+        return { success: true, globalStock, totalGlobalStock, supervisors };
+    } catch (error) {
+        console.error('Error in getSupervisorAssignmentStats:', error);
+        return { success: false, error: 'Error al cargar estadísticas de supervisores' };
+    }
+}
+
+export async function assignLeadsToSupervisor(supervisorName: string, quantity: number) {
+    try {
+        if (quantity <= 0 || quantity % 100 !== 0) {
+            return { success: false, count: 0, error: 'La cantidad debe ser múltiplo de 100' };
+        }
+        const cache = LeadCache.getInstance();
+        await cache.ensureInitialized();
+        return await cache.batchAssignToSupervisor(supervisorName, quantity);
+    } catch (error) {
+        console.error('Error in assignLeadsToSupervisor:', error);
+        return { success: false, count: 0, error: 'Error al asignar base al supervisor' };
     }
 }

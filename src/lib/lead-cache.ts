@@ -185,6 +185,49 @@ export class LeadCache {
         });
     }
 
+    /**
+     * ATOMIC BATCH ASSIGNMENT TO SUPERVISOR
+     * Takes leads from the global unassigned pool (no SUPERVISOR, no EJECUTIVO)
+     * and assigns them to a supervisor's pool.
+     */
+    public async batchAssignToSupervisor(
+        supervisorName: string,
+        quantity: number
+    ): Promise<{ success: boolean; count: number; error?: string }> {
+        return this.runLocked(async () => {
+            try {
+                await this._refresh();
+
+                const candidates = this.rows.filter(row => {
+                    const exec = (row.get('EJECUTIVO') || '').trim();
+                    const sup = (row.get('SUPERVISOR') || '').trim();
+                    const ruc = row.get('RUC');
+                    return ruc && exec === '' && sup === '';
+                }).slice(0, quantity);
+
+                if (candidates.length === 0) {
+                    return { success: false, count: 0, error: 'No hay leads disponibles en el stock global.' };
+                }
+
+                let successCount = 0;
+                for (const row of candidates) {
+                    row.set('SUPERVISOR', supervisorName);
+                    try {
+                        await row.save();
+                        successCount++;
+                    } catch (e) {
+                        console.error(`Error saving supervisor assignment for RUC ${row.get('RUC')}:`, e);
+                    }
+                }
+
+                return { success: true, count: successCount };
+            } catch (error: any) {
+                console.error('Error in batchAssignToSupervisor:', error);
+                return { success: false, count: 0, error: error.message || 'Error en asignación a supervisor' };
+            }
+        });
+    }
+
     public getByRuc(ruc: string) {
         return this.rows.find(r => r.get('RUC') === ruc);
     }
