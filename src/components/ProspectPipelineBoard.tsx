@@ -1201,6 +1201,30 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                                                                 </div>
                                                             )}
 
+                                                            {(userRole === 'ADMIN' || userRole === 'SPECIAL') && (
+                                                                <div style={{
+                                                                    display: 'inline-block',
+                                                                    fontSize: '9px',
+                                                                    fontWeight: 900,
+                                                                    padding: '2px 8px',
+                                                                    borderRadius: '6px',
+                                                                    textTransform: 'uppercase',
+                                                                    letterSpacing: '0.04em',
+                                                                    marginTop: '5px',
+                                                                    ...(lead.ORIGEN === 'Cartera Propia' ? {
+                                                                        background: 'rgba(245,158,11,0.12)',
+                                                                        border: '1px solid rgba(245,158,11,0.25)',
+                                                                        color: '#f59e0b'
+                                                                    } : {
+                                                                        background: 'rgba(99,102,241,0.12)',
+                                                                        border: '1px solid rgba(99,102,241,0.25)',
+                                                                        color: '#818cf8'
+                                                                    })
+                                                                }}>
+                                                                    {lead.ORIGEN === 'Cartera Propia' ? '👜 Cartera Propia' : '🏢 Base SMARTMEDIA'}
+                                                                </div>
+                                                            )}
+
                                                             <div className="lead-card-footer">
                                                                 <div className="lead-card-lines-cargo-container">
                                                                     <span className="lead-card-lines-count">

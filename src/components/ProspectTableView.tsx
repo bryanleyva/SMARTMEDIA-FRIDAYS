@@ -45,6 +45,7 @@ export default function ProspectTableView({
                             <th>Empresa / Razón Social</th>
                             <th>Contacto / Teléfono</th>
                             <th>Líneas / CF</th>
+                            {(userRole === 'ADMIN' || userRole === 'SPECIAL') && <th>Origen</th>}
                             <th>Estado Actual</th>
                             <th>Acciones</th>
                         </tr>
@@ -52,7 +53,7 @@ export default function ProspectTableView({
                     <tbody>
                         {leads.length === 0 ? (
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '100px', opacity: 0.3 }}>
+                                <td colSpan={(userRole === 'ADMIN' || userRole === 'SPECIAL') ? 7 : 6} style={{ textAlign: 'center', padding: '100px', opacity: 0.3 }}>
                                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌑</div>
                                     <span style={{ fontWeight: 900, textTransform: 'uppercase', letterSpacing: '4px' }}>No hay registros</span>
                                 </td>
@@ -91,6 +92,31 @@ export default function ProspectTableView({
                                                 <span className="cf-text" style={{ color: statusColor }}>S/ {lead['CARGO FIJO'] || lead.cargoFijo || '0'}</span>
                                             </div>
                                         </td>
+                                        {(userRole === 'ADMIN' || userRole === 'SPECIAL') && (
+                                            <td>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    fontSize: '9px',
+                                                    fontWeight: 900,
+                                                    padding: '3px 9px',
+                                                    borderRadius: '6px',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.04em',
+                                                    whiteSpace: 'nowrap',
+                                                    ...(lead.ORIGEN === 'Cartera Propia' ? {
+                                                        background: 'rgba(245,158,11,0.12)',
+                                                        border: '1px solid rgba(245,158,11,0.25)',
+                                                        color: '#f59e0b'
+                                                    } : {
+                                                        background: 'rgba(99,102,241,0.12)',
+                                                        border: '1px solid rgba(99,102,241,0.25)',
+                                                        color: '#818cf8'
+                                                    })
+                                                }}>
+                                                    {lead.ORIGEN === 'Cartera Propia' ? '👜 Cartera Propia' : '🏢 Base SMARTMEDIA'}
+                                                </span>
+                                            </td>
+                                        )}
                                         <td>
                                             <div className="status-selector-wrapper">
                                                 <select

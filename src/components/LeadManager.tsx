@@ -253,6 +253,9 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
         const res = await saveLead(lead.id, dataToSave);
 
         if (res.success) {
+            // Immediately refresh agendamientos so terminal-state leads disappear from MIS PENDIENTES
+            await loadAgendamientos();
+
             // Check if we need to promote to pipeline
             if (formState.estado === 'INTERESADO') {
                 const promoteRes = await promoteToPipeline({

@@ -7,7 +7,8 @@
       "Bash(Select-Object -First 20)",
       "Bash(Format-Table Name)",
       "Read(//c/Users/PC/Desktop/intento23-main/src/components/**)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx next *)"
     ]
   }
 }

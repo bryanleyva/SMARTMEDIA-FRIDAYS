@@ -204,9 +204,14 @@ export async function getAgendamientos(userName: string, userRole: string) {
         // Filtrar registros que:
         // 1. Tengan una fecha de agendamiento
         // 2. Sean del usuario (a menos que sea ADMIN)
+        const TERMINAL_STATES = ['NO INTERESADO', 'TELEFONO EQUIVOCADO', 'NO CONTESTA', 'RUC DADO DE BAJA', 'NO CALIFICA', 'POSIBLE FRAUDE', 'VENTA CAIDA', 'FRAUDE'];
+
         const scheduledRows = rows.filter(row => {
             const hasAgendamiento = row.get('FECHA AGENDAMIENTO') && row.get('FECHA AGENDAMIENTO').trim() !== '';
             if (!hasAgendamiento) return false;
+
+            const estado = (row.get('ESTADO') || '').trim().toUpperCase();
+            if (TERMINAL_STATES.includes(estado)) return false;
 
             if (userRole === 'ADMIN') return true;
             return row.get('EJECUTIVO') === userName;
@@ -513,6 +518,7 @@ export async function createManualLead(data: any, user: string) {
                 existing.set('CANTIDAD LINEAS', data.lineas || '');
                 existing.set('CARGO FIJO', data.cargoFijo || '');
                 existing.set('ESTADO', '');
+                existing.set('ORIGEN', 'MANUAL');
                 if (currentExec === '') {
                     existing.set('EJECUTIVO', user);
 
@@ -561,6 +567,7 @@ export async function createManualLead(data: any, user: string) {
                         return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
                     })(),
                     'ESTADO': '',
+                    'ORIGEN': 'MANUAL',
                 };
 
                 newRow[idColumnName] = nextId;
@@ -649,6 +656,19 @@ export async function promoteToPipeline(lead: any, user: string) {
 
         const now = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
 
+        // Read ORIGEN from BASE CLARO before inserting so we can include it directly
+        let origenProspeccion = 'Base SMARTMEDIA';
+        const baseSheet = doc.sheetsByTitle['BASE CLARO'];
+        let baseRow: any = null;
+        if (baseSheet) {
+            const baseRows = await baseSheet.getRows();
+            baseRow = baseRows.find((r: any) => r.get('RUC') == lead.ruc);
+            if (baseRow) {
+                const origenBase = (baseRow.get('ORIGEN') || '').trim().toUpperCase();
+                origenProspeccion = origenBase === 'MANUAL' ? 'Cartera Propia' : 'Base SMARTMEDIA';
+            }
+        }
+
         const newRow: any = {
             'ID': nextId.toString(),
             'RUC': String(lead.ruc),
@@ -666,21 +686,17 @@ export async function promoteToPipeline(lead: any, user: string) {
             'FECHA SI VERBAL': '',
             'FECHA CIERRE': '',
             'OBSERVACIONES': lead.observacion || '',
-            'SEGMENTO': lead.segmento || ''
+            'SEGMENTO': lead.segmento || '',
+            'ORIGEN': origenProspeccion
         };
 
         await sheet.addRow(newRow);
 
         // SYNC BACK TO BASE CLARO: Update status and clear agendamiento
-        const baseSheet = doc.sheetsByTitle['BASE CLARO'];
-        if (baseSheet) {
-            const baseRows = await baseSheet.getRows();
-            const baseRow = baseRows.find(r => r.get('RUC') == lead.ruc);
-            if (baseRow) {
-                baseRow.set('ESTADO', 'ENVIADO A PROSPECTOS');
-                baseRow.set('FECHA AGENDAMIENTO', '');
-                await baseRow.save();
-            }
+        if (baseRow) {
+            baseRow.set('ESTADO', 'ENVIADO A PROSPECTOS');
+            baseRow.set('FECHA AGENDAMIENTO', '');
+            await baseRow.save();
         }
 
         // Refresh cache so LeadManager sees the new state
@@ -708,6 +724,12 @@ export async function getPipelineData(userName: string, options: {
 
         let rows = await sheet.getRows();
         const { role, filterUser, startDate, endDate, search } = options;
+
+        // Exclude deals that have already been submitted or dropped — they belong to Linker/Ventas
+        rows = rows.filter(r => {
+            const estado = (r.get('ESTADO') || '').trim().toUpperCase();
+            return estado !== 'VENTA SUBIDA' && estado !== 'VENTA CAIDA';
+        });
 
         // 1. Role-based Level 1 Filter (Who can see what)
         if (role === 'SPECIAL') {
@@ -826,7 +848,8 @@ export async function getPipelineData(userName: string, options: {
                 'OBSERVACIONES': row.get('OBSERVACIONES'),
                 'EJECUTIVO': execName,
                 'SUPERVISOR': supervisor,
-                'SEGMENTO': row.get('SEGMENTO')
+                'SEGMENTO': row.get('SEGMENTO'),
+                'ORIGEN': row.get('ORIGEN') || 'Base SMARTMEDIA'
             };
         });
 
@@ -1755,13 +1778,13 @@ export async function assignLeadsToSupervisor(supervisorName: string, quantity: 
             criteria = (row: any) => {
                 const lineas = parseInt(row.get('CANTIDAD LINEAS') || '0');
                 switch (rangeId) {
-                    case '1-4':   return lineas >= 1  && lineas <= 4;
-                    case '5-10':  return lineas >= 5  && lineas <= 10;
+                    case '1-4': return lineas >= 1 && lineas <= 4;
+                    case '5-10': return lineas >= 5 && lineas <= 10;
                     case '11-15': return lineas >= 11 && lineas <= 15;
                     case '16-21': return lineas >= 16 && lineas <= 21;
                     case '22-30': return lineas >= 22 && lineas <= 30;
-                    case '30+':   return lineas > 30;
-                    default:      return true;
+                    case '30+': return lineas > 30;
+                    default: return true;
                 }
             };
         }
