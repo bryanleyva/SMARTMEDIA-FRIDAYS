@@ -253,8 +253,13 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
         const res = await saveLead(lead.id, dataToSave);
 
         if (res.success) {
-            // Immediately refresh agendamientos so terminal-state leads disappear from MIS PENDIENTES
-            await loadAgendamientos();
+            // Optimistic update: remove from MIS PENDIENTES immediately without waiting for Sheets
+            const TERMINAL_STATES = ['NO INTERESADO', 'TELEFONO EQUIVOCADO', 'NO CONTESTA', 'RUC DADO DE BAJA', 'NO CALIFICA', 'POSIBLE FRAUDE', 'VENTA CAIDA', 'FRAUDE'];
+            if (TERMINAL_STATES.includes(formState.estado) || formState.estado.startsWith('NO INTERESADO') || formState.estado === 'INTERESADO') {
+                setAgendamientos(prev => prev.filter(ag => ag.ruc !== lead.ruc));
+            }
+            // Also sync from server to catch any other changes
+            loadAgendamientos();
 
             // Check if we need to promote to pipeline
             if (formState.estado === 'INTERESADO') {

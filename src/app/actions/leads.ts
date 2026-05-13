@@ -148,8 +148,8 @@ export async function saveLead(rowIndex: number, data: any) {
         const fechaFin = `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
         updates['FECHA FIN'] = fechaFin;
 
-        if (TERMINAL_STATES.includes(data.estado)) {
-            // 1. Remove from Agendados
+        if (TERMINAL_STATES.includes(data.estado) || data.estado.startsWith('NO INTERESADO')) {
+            // Remove from Agendados (handles 'NO INTERESADO - MOTIVO' variants too)
             updates['FECHA AGENDAMIENTO'] = '';
         }
 
@@ -211,7 +211,7 @@ export async function getAgendamientos(userName: string, userRole: string) {
             if (!hasAgendamiento) return false;
 
             const estado = (row.get('ESTADO') || '').trim().toUpperCase();
-            if (TERMINAL_STATES.includes(estado)) return false;
+            if (TERMINAL_STATES.includes(estado) || estado.startsWith('NO INTERESADO')) return false;
 
             if (userRole === 'ADMIN') return true;
             return row.get('EJECUTIVO') === userName;
