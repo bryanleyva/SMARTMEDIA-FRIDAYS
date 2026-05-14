@@ -5,6 +5,13 @@ import { createPortal } from 'react-dom';
 import { getLeadByRuc, saveVenta, updateVentaFull } from '@/app/actions/leads';
 import { AppSwal } from '@/lib/sweetalert';
 
+async function uploadFile(file: File): Promise<{ success: boolean; fileId?: string; error?: string }> {
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
+    return res.json();
+}
+
 interface Props {
     isOpen: boolean;
     onClose: () => void;
@@ -243,21 +250,12 @@ export default function SubirVentaModal({ isOpen, onClose, leadData, ejecutivo, 
             let uploadedFileIds: string[] = [];
 
             if (files.length > 0) {
-                const { uploadFileToDrive } = await import('@/app/actions/drive');
-
-                // Upload files sequentially for better stability and reliable progress
                 for (const file of files) {
-                    const uploadData = new FormData();
-                    uploadData.append('file', file);
-
-                    const uploadRes = await uploadFileToDrive(uploadData);
+                    const uploadRes = await uploadFile(file);
                     if (!uploadRes.success || !uploadRes.fileId) {
                         throw new Error(uploadRes.error || `Error al subir el archivo: ${file.name}`);
                     }
-
                     uploadedFileIds.push(uploadRes.fileId);
-
-                    // Update progress reliably
                     setUploadProgress(prev => Math.min(prev + (100 / files.length), 100));
                 }
                 setUploadProgress(100);
@@ -277,9 +275,8 @@ export default function SubirVentaModal({ isOpen, onClose, leadData, ejecutivo, 
                 res = await saveVenta({
                     ...formData,
                     idSustentos: finalSustentos,
-                    ejecutivo: ejecutivo,
-                    pipelineId: leadData?.id || leadData?.ID
-                });
+                    ejecutivo: ejecutivo
+                }, String(leadData?.id || leadData?.ID || ''));
             }
 
             if (res.success) {

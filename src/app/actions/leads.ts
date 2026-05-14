@@ -957,7 +957,7 @@ export async function updatePipelineStatus(id: string, newStatus: string) {
         return { success: false, error: 'Error al actualizar estado' };
     }
 }
-export async function saveVenta(data: any, pipelineId?: string) {
+export async function saveVenta(data: any, pipelineIdArg?: string) {
     try {
         await loadDoc();
         const sheet = doc.sheetsByTitle['VENTAS'];
@@ -1015,10 +1015,10 @@ export async function saveVenta(data: any, pipelineId?: string) {
             const prospeccionRows = await prospeccionSheet.getRows();
             let prospeccionRow = null;
 
-            if (pipelineId) {
-                prospeccionRow = prospeccionRows.find(r => r.get('ID') == pipelineId);
+            const pid = pipelineIdArg || data.pipelineId;
+            if (pid) {
+                prospeccionRow = prospeccionRows.find(r => r.get('ID') == pid);
             } else {
-                // Legacy: search by RUC (might hit multiple if we don't have ID)
                 prospeccionRow = prospeccionRows.find(r => r.get('RUC') == data.ruc);
             }
 
