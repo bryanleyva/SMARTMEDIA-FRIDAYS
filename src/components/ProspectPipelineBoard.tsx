@@ -1401,7 +1401,7 @@ export default function ProspectPipelineBoard({ leads: initialLeads, userRole, u
                     userRole={userRole}
                 />
             ) : (
-                <DroppedProspectsTable data={droppedLeads} />
+                <DroppedProspectsTable data={droppedLeads} userRole={userRole} />
             )}
 
             <SubirVentaModal
