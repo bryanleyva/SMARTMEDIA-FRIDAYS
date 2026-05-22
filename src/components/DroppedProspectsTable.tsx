@@ -21,19 +21,45 @@ interface Props {
     userRole?: string;
 }
 
-function downloadCSV(rows: DroppedProspect[]) {
-    const escape = (v: string) => `"${String(v || '').replace(/"/g, '""')}"`;
-    const headers = ['RUC', 'Razón Social', 'Ejecutivo', 'Fecha Caída', 'Motivo', 'Estado Caída', 'Contacto', 'Teléfono', 'Líneas', 'Cargo Fijo'];
-    const body = rows.map(r =>
-        [r.ruc, r.razonSocial, r.ejecutivo, r.fechaCaida, r.motivo, r.estadoFinal, r.contacto, r.telefono, r.lineas, r.cargoFijo]
-            .map(escape).join(',')
-    );
-    const csv = [headers.map(escape).join(','), ...body].join('\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+async function downloadXLSX(rows: DroppedProspect[]) {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Cuentas Caídas');
+
+    ws.columns = [
+        { header: 'RUC',          key: 'ruc',          width: 16 },
+        { header: 'Razón Social', key: 'razonSocial',  width: 36 },
+        { header: 'Ejecutivo',    key: 'ejecutivo',    width: 22 },
+        { header: 'Fecha Caída',  key: 'fechaCaida',   width: 20 },
+        { header: 'Motivo',       key: 'motivo',       width: 40 },
+        { header: 'Razón Caída',  key: 'estadoFinal',  width: 28 },
+        { header: 'Contacto',     key: 'contacto',     width: 26 },
+        { header: 'Teléfono',     key: 'telefono',     width: 16 },
+        { header: 'Líneas',       key: 'lineas',       width: 10 },
+        { header: 'Cargo Fijo',   key: 'cargoFijo',    width: 14 },
+    ];
+
+    // Header styling
+    ws.getRow(1).eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    });
+
+    rows.forEach(r => {
+        ws.addRow({
+            ruc: r.ruc, razonSocial: r.razonSocial, ejecutivo: r.ejecutivo,
+            fechaCaida: r.fechaCaida, motivo: r.motivo, estadoFinal: r.estadoFinal,
+            contacto: r.contacto, telefono: r.telefono, lineas: r.lineas, cargoFijo: r.cargoFijo
+        });
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cuentas_caidas_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `cuentas_caidas_${new Date().toISOString().slice(0, 10)}.xlsx`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -155,7 +181,7 @@ export default function DroppedProspectsTable({ data, userRole }: Props) {
 
                 {/* Download CSV */}
                 <button
-                    onClick={() => downloadCSV(filtered)}
+                    onClick={() => downloadXLSX(filtered)}
                     disabled={filtered.length === 0}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px',
@@ -172,7 +198,7 @@ export default function DroppedProspectsTable({ data, userRole }: Props) {
                         <polyline points="7 10 12 15 17 10" />
                         <line x1="12" y1="15" x2="12" y2="3" />
                     </svg>
-                    Descargar CSV
+                    Descargar Excel
                 </button>
             </div>
 
