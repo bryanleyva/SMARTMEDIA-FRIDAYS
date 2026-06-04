@@ -9,6 +9,14 @@ async function uploadFile(file: File): Promise<{ success: boolean; fileId?: stri
     const uploadData = new FormData();
     uploadData.append('file', file);
     const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        if (res.status === 413) {
+            return { success: false, error: `El archivo "${file.name}" es demasiado grande. El límite es 25MB.` };
+        }
+        return { success: false, error: text || `Error del servidor (${res.status})` };
+    }
     return res.json();
 }
 

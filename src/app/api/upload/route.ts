@@ -7,7 +7,16 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
     try {
-        const formData = await req.formData();
+        let formData: FormData;
+        try {
+            formData = await req.formData();
+        } catch (parseError: any) {
+            const msg = parseError?.message || '';
+            if (msg.includes('too large') || msg.includes('entity') || msg.includes('413')) {
+                return NextResponse.json({ success: false, error: 'El archivo es demasiado grande. El límite máximo es 25MB.' }, { status: 413 });
+            }
+            return NextResponse.json({ success: false, error: 'No se pudo leer el archivo enviado.' }, { status: 400 });
+        }
         const file = formData.get('file') as File;
 
         if (!file) {
