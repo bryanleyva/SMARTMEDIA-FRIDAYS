@@ -25,8 +25,8 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         return `${year}-${month}-${day}`;
     };
 
-    const [filterDate, setFilterDate] = useState<string>(getTodayString());
-    const [useDateFilter, setUseDateFilter] = useState(true);
+    const [filterDateFrom, setFilterDateFrom] = useState<string>(getTodayString());
+    const [filterDateTo, setFilterDateTo] = useState<string>(getTodayString());
     const [filterStatus, setFilterStatus] = useState('');
     const [filterExecutive, setFilterExecutive] = useState('');
 
@@ -78,8 +78,8 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
             }
         }
 
-        // 3. Date Filter: Prioritize fechaFin (last touch) over fechaInicio (assignment)
-        if (!useDateFilter) return true;
+        // 3. Date Range Filter
+        if (!filterDateFrom && !filterDateTo) return true;
 
         const trackingDate = l.fechaFin || l.fechaInicio;
         if (!trackingDate) return false;
@@ -91,7 +91,6 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
                 if (parts.length < 3) return null;
 
                 let d, m, y;
-                // Identify Year (4 digits)
                 if (parts[2].length === 4) { [d, m, y] = parts; }
                 else if (parts[0].length === 4) { [y, m, d] = parts; }
                 else return null;
@@ -101,7 +100,10 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
         };
 
         const leadIsoDate = normalizeDate(trackingDate);
-        return leadIsoDate === filterDate;
+        if (!leadIsoDate) return false;
+        if (filterDateFrom && leadIsoDate < filterDateFrom) return false;
+        if (filterDateTo && leadIsoDate > filterDateTo) return false;
+        return true;
     });
 
     // Group by Executive (from filtered results)
@@ -364,7 +366,10 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.download = `Seguimiento_Ryders_${new Date().toISOString().split('T')[0]}.xlsx`;
+            const rangeLabel = filterDateFrom === filterDateTo
+                ? filterDateFrom
+                : `${filterDateFrom}_al_${filterDateTo}`;
+            link.download = `Seguimiento_Ryders_${rangeLabel}.xlsx`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -459,33 +464,29 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
 
                         <div style={{ height: '4rem', width: '1px', backgroundColor: 'rgba(63, 63, 70, 0.8)', margin: '0 0.5rem' }}></div>
 
-                        {/* Date Filter */}
+                        {/* Date Range Filter */}
                         <div className="flex flex-col" style={{ gap: '0.75rem' }}>
-                            <label className="text-emerald-500/80" style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginLeft: '0.5rem' }}>Fecha de Gestión</label>
-                            <div className="flex items-center" style={{ gap: '1.25rem' }}>
-                                <label className="switch-premium">
-                                    <input
-                                        type="checkbox"
-                                        id="useFilter"
-                                        checked={useDateFilter}
-                                        onChange={(e) => setUseDateFilter(e.target.checked)}
-                                    />
-                                    <span className="slider-premium"></span>
-                                </label>
-
-                                <div style={{ position: 'relative' }}>
+                            <label className="text-emerald-500/80" style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.2em', marginLeft: '0.5rem' }}>Rango de Fechas</label>
+                            <div className="flex items-center" style={{ gap: '0.75rem' }}>
+                                <div className="flex flex-col" style={{ gap: '0.3rem' }}>
+                                    <span style={{ fontSize: '9px', color: '#52525b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Desde</span>
                                     <input
                                         type="date"
-                                        value={filterDate}
-                                        onChange={(e) => setFilterDate(e.target.value)}
-                                        disabled={!useDateFilter}
+                                        value={filterDateFrom}
+                                        onChange={(e) => setFilterDateFrom(e.target.value)}
                                         className="custom-select-premium"
-                                        style={{
-                                            width: 'auto',
-                                            paddingRight: '1rem',
-                                            opacity: !useDateFilter ? '0.2' : '1',
-                                            cursor: !useDateFilter ? 'not-allowed' : 'pointer'
-                                        }}
+                                        style={{ width: 'auto', paddingRight: '1rem', colorScheme: 'dark' }}
+                                    />
+                                </div>
+                                <span style={{ color: '#52525b', fontWeight: '900', fontSize: '1rem', paddingTop: '1.4rem' }}>→</span>
+                                <div className="flex flex-col" style={{ gap: '0.3rem' }}>
+                                    <span style={{ fontSize: '9px', color: '#52525b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.1em', marginLeft: '0.25rem' }}>Hasta</span>
+                                    <input
+                                        type="date"
+                                        value={filterDateTo}
+                                        onChange={(e) => setFilterDateTo(e.target.value)}
+                                        className="custom-select-premium"
+                                        style={{ width: 'auto', paddingRight: '1rem', colorScheme: 'dark' }}
                                     />
                                 </div>
                             </div>
@@ -778,7 +779,7 @@ export default function AdminTracking({ currentUserRole, currentUserName }: Prop
                 executives.length === 0 && (
                     <div className="text-center py-20 text-gray-500 italic border border-dashed border-zinc-800 rounded-xl bg-zinc-900/50">
                         <div className="text-4xl mb-4 opacity-20">📅</div>
-                        No hay gestiones registradas para la fecha seleccionada.
+                        No hay gestiones registradas para el rango de fechas seleccionado.
                     </div>
                 )
             }
