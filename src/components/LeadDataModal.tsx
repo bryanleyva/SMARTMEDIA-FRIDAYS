@@ -56,7 +56,7 @@ export default function LeadDataModal({ isOpen, onClose, ruc, currentUser, onSuc
                     contacto: d.contacto || '',
                     dni: d.dni || '',
                     telefono: d.telefono || '',
-                    correo: d.correo || d.cargoFijo || '', // Note: getLeadByRuc seems to map cargoFijo to correo in its returned data based on comments in leads.ts, but let's be careful
+                    correo: d.correo || '',
                     direccion: d.direccion || '',
                     departamento: d.departamento || '',
                     provincia: d.provincia || '',
