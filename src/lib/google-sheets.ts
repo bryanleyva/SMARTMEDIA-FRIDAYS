@@ -102,14 +102,24 @@ export async function getUserByCredentials(username: string, password: string): 
 }
 
 export async function checkSessionToken(username: string, token: string): Promise<boolean> {
-    const cache = UserCache.getInstance();
-    await cache.ensureInitialized(); // Uses 15s TTL
+    try {
+        const cache = UserCache.getInstance();
+        await cache.ensureInitialized();
 
-    const userRow = cache.findUser(username);
-    if (!userRow) return false;
+        const userRow = cache.findUser(username);
+        // Fail-open: if user not found it's likely a Sheets API quota error, not an invalid session.
+        // Only close the session if the token is explicitly empty (account disabled).
+        if (!userRow) return true;
 
-    const currentToken = userRow.get('SESSION_TOKEN');
-    return currentToken === token;
+        const currentToken = userRow.get('SESSION_TOKEN');
+        // Explicitly disabled account (empty token) → close session
+        if (!currentToken) return false;
+
+        return currentToken === token;
+    } catch {
+        // API error → fail-open, don't log everyone out
+        return true;
+    }
 }
 
 export async function getAvailableBase(limit: number = 10, assignedUser: string) {
