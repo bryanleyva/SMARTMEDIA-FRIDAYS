@@ -31,6 +31,9 @@ export default function AdminAssignmentPanel() {
     const [uploadDragging, setUploadDragging] = useState(false);
     const uploadInputRef = useRef<HTMLInputElement>(null);
 
+    // Dedup state
+    const [deduping, setDeduping] = useState(false);
+
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
@@ -140,6 +143,46 @@ export default function AdminAssignmentPanel() {
         }
     };
 
+    const handleDedup = async () => {
+        const confirm = await AppSwal.fire({
+            title: '¿Eliminar RUCs duplicados?',
+            html: 'Se conservará la <b>primera aparición</b> de cada RUC y se borrarán las filas repetidas de BASE CLARO.<br/><br/>Esta acción <b>no se puede deshacer</b>.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'SÍ, ELIMINAR DUPLICADOS',
+            cancelButtonText: 'CANCELAR',
+            confirmButtonColor: '#ef4444'
+        });
+        if (!confirm.isConfirmed) return;
+
+        setDeduping(true);
+        try {
+            const res = await fetch('/api/dedup-base-claro', { method: 'POST' });
+            const contentType = res.headers.get('content-type') || '';
+            const data = contentType.includes('application/json')
+                ? await res.json()
+                : { success: false, error: await res.text() };
+
+            if (data.success) {
+                AppSwal.fire({
+                    title: 'Limpieza completada',
+                    text: data.deleted === 0
+                        ? 'No se encontraron RUCs duplicados.'
+                        : `Se eliminaron ${data.deleted} filas duplicadas de BASE CLARO.`,
+                    icon: 'success',
+                    confirmButtonColor: '#10b981'
+                });
+                loadData();
+            } else {
+                AppSwal.fire({ title: 'Error', text: data.error || 'Error al deduplicar.', icon: 'error', confirmButtonColor: '#ef4444' });
+            }
+        } catch (e: any) {
+            AppSwal.fire({ title: 'Error', text: e.message || 'Error de conexión.', icon: 'error', confirmButtonColor: '#ef4444' });
+        } finally {
+            setDeduping(false);
+        }
+    };
+
     if (loading) return (
         <div className="loadingContainer font-outfit uppercase">
             <span className="loadingText">Cargando Stock Global...</span>
@@ -198,6 +241,18 @@ export default function AdminAssignmentPanel() {
                         {uploading ? 'CARGANDO...' : 'SUBIR BASE'}
                     </button>
                 </div>
+            </div>
+
+            {/* Dedup Section */}
+            <div className="ddSection">
+                <div className="ddLeft">
+                    <span className="ddTag">LIMPIEZA DE DATOS</span>
+                    <h2 className="ddTitle">Eliminar RUCs Duplicados</h2>
+                    <p className="ddDesc">Conserva la primera aparición de cada RUC y elimina las filas repetidas en BASE CLARO. Irreversible.</p>
+                </div>
+                <button className="ddBtn" disabled={deduping} onClick={handleDedup}>
+                    {deduping ? 'PROCESANDO...' : '🗑 DEDUPLICAR BASE'}
+                </button>
             </div>
 
             {/* Stock Global Header */}
@@ -432,6 +487,29 @@ export default function AdminAssignmentPanel() {
                 }
                 .ubBtn:hover:not(:disabled) { background: #4f46e5; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99,102,241,0.3); }
                 .ubBtn:disabled { background: #27272a; color: #52525b; cursor: not-allowed; transform: none; }
+
+                /* Dedup Section */
+                .ddSection {
+                    display: flex; justify-content: space-between; align-items: center;
+                    gap: 2rem; padding: 1.5rem 2rem;
+                    background: rgba(239,68,68,0.04);
+                    border: 1px solid rgba(239,68,68,0.15);
+                    border-radius: 1.5rem;
+                    flex-wrap: wrap;
+                }
+                .ddLeft { display: flex; flex-direction: column; gap: 0.4rem; max-width: 560px; }
+                .ddTag { font-size: 9px; font-weight: 900; color: #ef4444; text-transform: uppercase; letter-spacing: 0.3em; }
+                .ddTitle { font-size: 1.3rem; font-weight: 950; color: white; text-transform: uppercase; letter-spacing: -0.02em; margin: 0; }
+                .ddDesc { font-size: 10px; color: #52525b; font-weight: 600; line-height: 1.6; margin: 0; }
+                .ddBtn {
+                    padding: 0 1.5rem; height: 56px; border-radius: 1rem; flex-shrink: 0;
+                    background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+                    color: #ef4444; font-size: 10px; font-weight: 900;
+                    text-transform: uppercase; letter-spacing: 0.15em;
+                    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+                }
+                .ddBtn:hover:not(:disabled) { background: #ef4444; color: white; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239,68,68,0.3); }
+                .ddBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(10px); }
                     to { opacity: 1; transform: translateY(0); }
