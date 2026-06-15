@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, loadDoc } from '@/lib/google-sheets';
+import { doc, loadDoc, auth } from '@/lib/google-sheets';
+import { google } from 'googleapis';
 
 export const maxDuration = 120;
 
@@ -14,15 +15,15 @@ export async function POST(req: NextRequest) {
         await sheet.loadHeaderRow();
         const rows = await sheet.getRows();
 
-        // Find first-occurrence index for each RUC
-        const seenRuc = new Map<string, number>(); // ruc → first row position in array
-        const toDelete: number[] = []; // positions (in array) to delete
+        // Find duplicate row indices (rows array is 0-based, excludes header)
+        const seenRuc = new Map<string, number>();
+        const toDelete: number[] = [];
 
         rows.forEach((row, idx) => {
             const ruc = String(row.get('RUC') || '').trim();
-            if (!ruc) return; // skip empty RUC rows
+            if (!ruc) return;
             if (seenRuc.has(ruc)) {
-                toDelete.push(idx); // duplicate: mark for deletion
+                toDelete.push(idx);
             } else {
                 seenRuc.set(ruc, idx);
             }
@@ -32,16 +33,30 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: true, deleted: 0, message: 'No se encontraron RUCs duplicados.' });
         }
 
-        // Delete from BOTTOM to TOP so row indices don't shift during deletion
+        // Sort descending so each deletion doesn't shift indices of remaining targets
         const toDeleteDesc = [...toDelete].sort((a, b) => b - a);
 
-        let deleted = 0;
-        for (const idx of toDeleteDesc) {
-            await rows[idx].delete();
-            deleted++;
-        }
+        // Build all deleteDimension requests — one per duplicate row
+        // Sheets API indices are 0-based; row 0 = header, so data row idx → startIndex = idx + 1
+        const requests = toDeleteDesc.map(idx => ({
+            deleteDimension: {
+                range: {
+                    sheetId: sheet.sheetId,
+                    dimension: 'ROWS',
+                    startIndex: idx + 1,
+                    endIndex: idx + 2,
+                },
+            },
+        }));
 
-        return NextResponse.json({ success: true, deleted });
+        // Single HTTP request to delete all duplicates at once
+        const sheetsApi = google.sheets({ version: 'v4', auth });
+        await sheetsApi.spreadsheets.batchUpdate({
+            spreadsheetId: process.env.GOOGLE_SHEET_ID!,
+            requestBody: { requests },
+        });
+
+        return NextResponse.json({ success: true, deleted: toDelete.length });
 
     } catch (error: any) {
         console.error('Error deduplicating BASE CLARO:', error);
