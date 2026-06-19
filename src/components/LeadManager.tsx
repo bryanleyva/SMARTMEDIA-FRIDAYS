@@ -19,6 +19,7 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
     const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
     const [agendamientos, setAgendamientos] = useState<any[]>([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [downloadingBase, setDownloadingBase] = useState(false);
 
     const [formState, setFormState] = useState({
         estado: '',
@@ -184,6 +185,29 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
         setLoading(false);
     };
 
+    const handleDownloadBase = async () => {
+        setDownloadingBase(true);
+        try {
+            const res = await fetch('/api/download-base-claro');
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                AppSwal.fire({ title: 'Error', text: err.error || 'No se pudo descargar la base', icon: 'error' });
+                return;
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `BASE_CLARO_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            AppSwal.fire({ title: 'Error', text: 'Error al descargar la base', icon: 'error' });
+        } finally {
+            setDownloadingBase(false);
+        }
+    };
+
     useEffect(() => {
         loadNext();
     }, []);
@@ -305,6 +329,16 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                 <h2 style={{ fontSize: '24px', fontWeight: '900', margin: 0, color: '#fff' }}>GESTIÓN DE OPORTUNIDAD</h2>
                 <p style={{ fontSize: '10px', color: '#ef4444', margin: '4px 0 0 0', fontWeight: '900', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Sin registros asignados actualmente</p>
             </div>
+            {userRole === 'ADMIN' && (
+                <button
+                    onClick={handleDownloadBase}
+                    disabled={downloadingBase}
+                    className="action-btn-premium"
+                    style={{ height: '3rem', fontSize: '11px', fontWeight: '900', background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)' }}
+                >
+                    {downloadingBase ? 'DESCARGANDO...' : '⬇ BASE CLARO'}
+                </button>
+            )}
         </div>
     );
 
@@ -522,13 +556,25 @@ export default function LeadManager({ userEmail, userName, userRole }: LeadFormP
                                         <h2 style={{ fontSize: '24px', fontWeight: '900', margin: 0, color: '#fff' }}>GESTIÓN DE OPORTUNIDAD</h2>
                                         <p style={{ fontSize: '10px', color: '#10b981', margin: '4px 0 0 0', fontWeight: '900', letterSpacing: '0.2em', textTransform: 'uppercase' }}>Leads v2.0 • Prospección Activa</p>
                                     </div>
-                                    <button
-                                        onClick={() => setIsAddModalOpen(true)}
-                                        className="action-btn-premium"
-                                        style={{ height: '3rem', fontSize: '11px', fontWeight: '900' }}
-                                    >
-                                        + NUEVO REGISTRO
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {userRole === 'ADMIN' && (
+                                            <button
+                                                onClick={handleDownloadBase}
+                                                disabled={downloadingBase}
+                                                className="action-btn-premium"
+                                                style={{ height: '3rem', fontSize: '11px', fontWeight: '900', background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)' }}
+                                            >
+                                                {downloadingBase ? 'DESCARGANDO...' : '⬇ BASE CLARO'}
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => setIsAddModalOpen(true)}
+                                            className="action-btn-premium"
+                                            style={{ height: '3rem', fontSize: '11px', fontWeight: '900' }}
+                                        >
+                                            + NUEVO REGISTRO
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
