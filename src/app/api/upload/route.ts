@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         const blob = await put(file.name, file, {
             access: 'public',
             contentType: file.type || 'application/octet-stream',
+            addRandomSuffix: true,
         });
 
         return NextResponse.json({

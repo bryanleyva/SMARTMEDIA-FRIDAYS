@@ -12,6 +12,7 @@ export async function uploadFileToDrive(formData: FormData) {
         const blob = await put(file.name, file, {
             access: 'public',
             contentType: file.type || 'application/octet-stream',
+            addRandomSuffix: true,
         });
 
         return {
