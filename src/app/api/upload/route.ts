@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         }
 
         const drive = google.drive({ version: 'v3', auth });
-        const folderId = '17fYDbJtdfpKsMGY_mvd-laP0ZrMjTXJ4';
+        const folderId = '13UpUfdlB6jr2vECjNuBP89N8IUvauDWN';
 
         // Check folder access
         try {

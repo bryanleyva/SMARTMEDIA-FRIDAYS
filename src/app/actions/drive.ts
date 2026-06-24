@@ -21,7 +21,7 @@ export async function uploadFileToDrive(formData: FormData) {
         stream.push(null);
 
         // Check folder access first
-        const folderId = '17fYDbJtdfpKsMGY_mvd-laP0ZrMjTXJ4';
+        const folderId = '13UpUfdlB6jr2vECjNuBP89N8IUvauDWN';
         try {
             const folder = await drive.files.get({
                 fileId: folderId,
