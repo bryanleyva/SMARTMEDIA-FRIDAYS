@@ -6,6 +6,25 @@ import { AppSwal } from '@/lib/sweetalert';
 import SubirVentaModal from './SubirVentaModal';
 import { exportVentasToExcel } from '@/lib/excel-utils';
 
+// Sustento helpers: old records have Drive IDs, new records have Vercel Blob URLs
+const getSustentoViewUrl = (id: string) => {
+    const s = id.trim();
+    if (s.startsWith('https://')) return s;
+    return `https://drive.google.com/file/d/${s}/view`;
+};
+const getSustentoDownloadUrl = (id: string) => {
+    const s = id.trim();
+    if (s.startsWith('https://')) return s;
+    return `https://drive.google.com/uc?export=download&id=${s}`;
+};
+const getSustentoLabel = (id: string, idx: number) => {
+    const s = id.trim();
+    if (s.startsWith('https://')) {
+        try { return decodeURIComponent(new URL(s).pathname.split('/').pop() || `Sustento ${idx + 1}`); } catch { return `Sustento ${idx + 1}`; }
+    }
+    return `Sustento ${idx + 1}`;
+};
+
 interface Sale {
     id: string;
     ejecutivo: string;
@@ -1265,12 +1284,11 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                     <div key={idx} className="file-item-mini">
                                                                         <div className="file-info-mini">
                                                                             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ opacity: 0.6 }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                                            <span className="file-name-mini">Sustento {idx + 1}</span>
-                                                                            <span className="file-id-mini">ID: {id.trim().substring(0, 10)}...</span>
+                                                                            <span className="file-name-mini">{getSustentoLabel(id, idx)}</span>
                                                                         </div>
                                                                         <div className="flex gap-3">
                                                                             <a
-                                                                                href={`https://drive.google.com/file/d/${id.trim()}/view`}
+                                                                                href={getSustentoViewUrl(id)}
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
                                                                                 className="file-action-icon"
@@ -1278,7 +1296,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                                                             </a>
                                                                             <a
-                                                                                href={`https://drive.google.com/uc?export=download&id=${id.trim()}`}
+                                                                                href={getSustentoDownloadUrl(id)}
                                                                                 target="_blank"
                                                                                 className="file-action-icon blue"
                                                                             >
@@ -1682,7 +1700,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                                 const ids = v.idSustentos.split(' - ');
                                                                                 ids.forEach((id: string, idx: number) => {
                                                                                     setTimeout(() => {
-                                                                                        window.open(`https://drive.google.com/file/d/${id.trim()}/view`, '_blank');
+                                                                                        window.open(getSustentoViewUrl(id), '_blank');
                                                                                     }, idx * 250);
                                                                                 });
                                                                             }}
@@ -1697,7 +1715,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                                 ids.forEach((id: string, idx: number) => {
                                                                                     setTimeout(() => {
                                                                                         const link = document.createElement('a');
-                                                                                        link.href = `https://drive.google.com/uc?export=download&id=${id.trim()}`;
+                                                                                        link.href = getSustentoDownloadUrl(id);
                                                                                         link.target = '_blank';
                                                                                         document.body.appendChild(link);
                                                                                         link.click();
@@ -1714,12 +1732,11 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                     {v.idSustentos.split(' - ').map((id: string, idx: number) => (
                                                                         <div key={idx} className="file-item">
                                                                             <div className="file-info">
-                                                                                <span className="file-name">Sustento {idx + 1}</span>
-                                                                                <span className="file-id">ID: {id.trim().substring(0, 10)}...</span>
+                                                                                <span className="file-name">{getSustentoLabel(id, idx)}</span>
                                                                             </div>
                                                                             <div className="flex gap-2">
                                                                                 <a
-                                                                                    href={`https://drive.google.com/file/d/${id.trim()}/view`}
+                                                                                    href={getSustentoViewUrl(id)}
                                                                                     target="_blank"
                                                                                     rel="noopener noreferrer"
                                                                                     className="file-action-btn"
@@ -1728,7 +1745,7 @@ export default function SessionLinker({ currentUserRole, currentUserName, curren
                                                                                     <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
                                                                                 </a>
                                                                                 <a
-                                                                                    href={`https://drive.google.com/uc?export=download&id=${id.trim()}`}
+                                                                                    href={getSustentoDownloadUrl(id)}
                                                                                     target="_blank"
                                                                                     className="file-action-btn download"
                                                                                     title="Descargar"
