@@ -4,20 +4,15 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getLeadByRuc, saveVenta, updateVentaFull } from '@/app/actions/leads';
 import { AppSwal } from '@/lib/sweetalert';
+import { uploadFileToDrive } from '@/lib/upload-file';
 
 async function uploadFile(file: File): Promise<{ success: boolean; fileId?: string; error?: string }> {
-    const uploadData = new FormData();
-    uploadData.append('file', file);
-    const res = await fetch('/api/upload', { method: 'POST', body: uploadData });
-    const contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-        const text = await res.text();
-        if (res.status === 413) {
-            return { success: false, error: `El archivo "${file.name}" es demasiado grande. El límite es 25MB.` };
-        }
-        return { success: false, error: text || `Error del servidor (${res.status})` };
+    try {
+        const fileId = await uploadFileToDrive(file);
+        return { success: true, fileId };
+    } catch (err: any) {
+        return { success: false, error: err.message || `Error al subir el archivo: ${file.name}` };
     }
-    return res.json();
 }
 
 interface Props {
