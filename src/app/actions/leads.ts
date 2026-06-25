@@ -4,6 +4,22 @@ import { doc, loadDoc } from '@/lib/google-sheets';
 import { LeadCache } from '@/lib/lead-cache';
 import { UserCache } from '@/lib/user-cache';
 
+/**
+ * Normaliza un nombre/identificador para comparar de forma tolerante:
+ * - quita acentos (Pérez -> perez)
+ * - colapsa espacios internos y duros/non-breaking (Marco  Perez -> marco perez)
+ * - recorta extremos y pasa a minúsculas
+ * Evita que un usuario "desaparezca" del pipeline por un espacio o tilde invisible
+ * que no coincide entre la columna EJECUTIVO (PROSPECCION) y NOMBRES COMPLETOS (USUARIOS).
+ */
+function normId(s: string | undefined | null): string {
+    return (s || '')
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
 export async function getNextLead(userEmail: string, userName: string) {
     try {
         const cache = LeadCache.getInstance();
@@ -740,27 +756,27 @@ export async function getPipelineData(userName: string, options: {
             // Collect all possible identifiers for team members (names and codes)
             const teamIdentities = new Set<string>();
             team.forEach(u => {
-                const code = u.get('USER')?.toLowerCase().trim();
-                const name = u.get('NOMBRES COMPLETOS')?.toLowerCase().trim();
+                const code = normId(u.get('USER'));
+                const name = normId(u.get('NOMBRES COMPLETOS'));
                 if (code) teamIdentities.add(code);
                 if (name) teamIdentities.add(name);
             });
-            teamIdentities.add(userName.toLowerCase().trim()); // Self
+            teamIdentities.add(normId(userName)); // Self
 
             rows = rows.filter(r => {
-                const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
+                const exec = normId(r.get('EJECUTIVO'));
                 return exec && teamIdentities.has(exec);
             });
         } else if (role !== 'ADMIN') {
             // STANDARD - Match name or code
-            const normUser = userName.toLowerCase().trim();
+            const normUser = normId(userName);
             const userCache = UserCache.getInstance();
             await userCache.ensureInitialized();
             const self = userCache.findUser(userName);
-            const selfCode = self?.get('USER')?.toLowerCase().trim();
+            const selfCode = normId(self?.get('USER'));
 
             rows = rows.filter(r => {
-                const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
+                const exec = normId(r.get('EJECUTIVO'));
                 return exec === normUser || (selfCode && exec === selfCode);
             });
         }
@@ -773,16 +789,16 @@ export async function getPipelineData(userName: string, options: {
             const target = userCache.findUser(filterUser);
 
             const possibleIdentities = new Set<string>();
-            possibleIdentities.add(filterUser.toLowerCase().trim());
+            possibleIdentities.add(normId(filterUser));
             if (target) {
-                const code = target.get('USER')?.toLowerCase().trim();
-                const name = target.get('NOMBRES COMPLETOS')?.toLowerCase().trim();
+                const code = normId(target.get('USER'));
+                const name = normId(target.get('NOMBRES COMPLETOS'));
                 if (code) possibleIdentities.add(code);
                 if (name) possibleIdentities.add(name);
             }
 
             rows = rows.filter(r => {
-                const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
+                const exec = normId(r.get('EJECUTIVO'));
                 return exec && possibleIdentities.has(exec);
             });
         }
@@ -1421,25 +1437,25 @@ export async function getDroppedProspects(userName: string, options: { role: str
             const team = userCache.getTeamForSupervisor(userName);
             const teamIdentities = new Set<string>();
             team.forEach(u => {
-                const code = u.get('USER')?.toLowerCase().trim();
-                const name = u.get('NOMBRES COMPLETOS')?.toLowerCase().trim();
+                const code = normId(u.get('USER'));
+                const name = normId(u.get('NOMBRES COMPLETOS'));
                 if (code) teamIdentities.add(code);
                 if (name) teamIdentities.add(name);
             });
-            teamIdentities.add(userName.toLowerCase().trim());
+            teamIdentities.add(normId(userName));
 
             rows = rows.filter(r => {
-                const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
+                const exec = normId(r.get('EJECUTIVO'));
                 return exec && teamIdentities.has(exec);
             });
         } else if (role !== 'ADMIN') {
             // STANDARD - only see their own (though button is hidden, safety first)
-            const normUser = userName.toLowerCase().trim();
+            const normUser = normId(userName);
             const self = userCache.findUser(userName);
-            const selfCode = self?.get('USER')?.toLowerCase().trim();
+            const selfCode = normId(self?.get('USER'));
 
             rows = rows.filter(r => {
-                const exec = r.get('EJECUTIVO')?.toLowerCase().trim();
+                const exec = normId(r.get('EJECUTIVO'));
                 return exec === normUser || (selfCode && exec === selfCode);
             });
         }
